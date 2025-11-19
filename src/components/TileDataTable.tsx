@@ -8,6 +8,7 @@ type SortConfig = {
 
 interface TileDataTableProps {
     data: TileData[];
+    onDelete: (tile: TileData) => void;
 }
 
 const ITEMS_PER_PAGE = 10;
@@ -18,9 +19,10 @@ const SortIcon: React.FC<{ direction: 'ascending' | 'descending' | 'none' }> = (
     return <span className="ml-1 text-gray-400">↕</span>;
 };
 
-export const TileDataTable: React.FC<TileDataTableProps> = ({ data }) => {
+export const TileDataTable: React.FC<TileDataTableProps> = ({ data, onDelete }) => {
     const [currentPage, setCurrentPage] = useState(1);
     const [sortConfig, setSortConfig] = useState<SortConfig>(null);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
 
     const sortedData = useMemo(() => {
         let sortableData = [...data];
@@ -63,6 +65,15 @@ export const TileDataTable: React.FC<TileDataTableProps> = ({ data }) => {
         }
     };
 
+    const handleDeleteClick = (tile: TileData) => {
+        if (window.confirm(`Apakah Anda yakin ingin menghapus data ubin merek "${tile.brand}" dari lokasi "${tile.lokasiSampel}"?`)) {
+            setDeletingId(tile.id);
+            onDelete(tile);
+            // Reset deleting status handled by parent re-render usually, but we can timeout safely
+            setTimeout(() => setDeletingId(null), 5000); 
+        }
+    };
+
     const headers: { key: keyof TileData; label: string }[] = [
         { key: 'entryDate', label: 'Tgl Masuk' },
         { key: 'brand', label: 'Merek' },
@@ -70,8 +81,7 @@ export const TileDataTable: React.FC<TileDataTableProps> = ({ data }) => {
         { key: 'grade', label: 'Grade' },
         { key: 'workingSize', label: 'Working Size' },
         { key: 'finish', label: 'GL/UGL' },
-        { key: 'type', label: 'Tipe' },
-        { key: 'lokasiSampel', label: 'Lokasi Sampel'},
+        { key: 'lokasiSampel', label: 'Lokasi'},
         { key: 'status', label: 'Status' },
     ];
     
@@ -81,26 +91,26 @@ export const TileDataTable: React.FC<TileDataTableProps> = ({ data }) => {
                 <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                     <tr>
                         {headers.map(({ key, label }) => (
-                            <th key={key} scope="col" className="px-6 py-3 cursor-pointer" onClick={() => requestSort(key)}>
+                            <th key={key as string} scope="col" className="px-6 py-3 cursor-pointer whitespace-nowrap" onClick={() => requestSort(key)}>
                                 <div className="flex items-center">
                                     {label}
                                     <SortIcon direction={sortConfig?.key === key ? sortConfig.direction : 'none'} />
                                 </div>
                             </th>
                         ))}
+                        <th scope="col" className="px-6 py-3 text-right">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     {paginatedData.map((tile) => (
                         <tr key={tile.id} className="bg-white border-b hover:bg-gray-50">
-                            <td className="px-6 py-4">{tile.entryDate}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">{tile.entryDate}</td>
                             <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{tile.brand}</td>
                             <td className="px-6 py-4">{tile.manufacturer}</td>
                             <td className="px-6 py-4">{tile.grade}</td>
                             <td className="px-6 py-4">{tile.workingSize}</td>
                             <td className="px-6 py-4">{tile.finish}</td>
-                            <td className="px-6 py-4">{tile.type}</td>
-                            <td className="px-6 py-4">{tile.lokasiSampel}</td>
+                            <td className="px-6 py-4 font-mono text-indigo-600">{tile.lokasiSampel}</td>
                             <td className="px-6 py-4">
                                 <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                                     tile.status === 'Sampel Aktif' 
@@ -110,13 +120,29 @@ export const TileDataTable: React.FC<TileDataTableProps> = ({ data }) => {
                                     {tile.status}
                                 </span>
                             </td>
+                            <td className="px-6 py-4 text-right">
+                                <button 
+                                    onClick={() => handleDeleteClick(tile)}
+                                    disabled={deletingId === tile.id}
+                                    className="text-red-600 hover:text-red-900 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+                                    title="Hapus Data"
+                                >
+                                    {deletingId === tile.id ? (
+                                        <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    ) : (
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                        </svg>
+                                    )}
+                                </button>
+                            </td>
                         </tr>
                     ))}
                 </tbody>
             </table>
              {paginatedData.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
-                    Tidak ada hasil yang cocok dengan kriteria filter Anda.
+                    Tidak ada data yang ditampilkan.
                 </div>
             )}
             {totalPages > 1 && (
@@ -126,10 +152,10 @@ export const TileDataTable: React.FC<TileDataTableProps> = ({ data }) => {
                     </span>
                     <div className="flex items-center space-x-2">
                         <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="px-3 py-1 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
-                            Sebelumnya
+                            Prev
                         </button>
                         <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="px-3 py-1 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
-                            Berikutnya
+                            Next
                         </button>
                     </div>
                 </div>
