@@ -1,15 +1,19 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { fetchTileData, saveTileData } from './services/googleSheetService';
+import { fetchTileData, saveTileData, deleteTileData } from './services/googleSheetService';
 import type { TileData } from './types';
 import { DashboardCharts } from './components/Charts';
 import { TileDataTable } from './components/TileDataTable';
+import { StorageMap } from './components/StorageMap';
 
 // --- Helper & Sub-components ---
 
 const Header: React.FC = () => (
-  <header className="bg-slate-800 shadow-md">
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-      <h1 className="text-2xl font-bold text-white">Dashboard Monitoring Penyimpanan Ubin</h1>
+  <header className="bg-slate-800 shadow-md sticky top-0 z-10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+      <h1 className="text-xl md:text-2xl font-bold text-white flex items-center">
+        <svg className="w-8 h-8 mr-3 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path></svg>
+        Tile Monitor
+      </h1>
     </div>
   </header>
 );
@@ -18,14 +22,15 @@ interface DashboardCardProps {
   title: string;
   value: string | number;
   icon: React.ReactNode;
+  colorClass?: string;
 }
-const DashboardCard: React.FC<DashboardCardProps> = ({ title, value, icon }) => (
-  <div className="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
+const DashboardCard: React.FC<DashboardCardProps> = ({ title, value, icon, colorClass = "text-indigo-600 bg-indigo-100" }) => (
+  <div className="bg-white p-6 rounded-lg shadow-md flex items-center justify-between transform transition hover:scale-105 duration-200">
     <div>
       <p className="text-sm font-medium text-gray-500">{title}</p>
-      <p className="text-2xl font-bold text-gray-800">{value}</p>
+      <p className="text-2xl font-bold text-gray-800 mt-1">{value}</p>
     </div>
-    <div className="text-indigo-600 bg-indigo-100 p-3 rounded-full">
+    <div className={`${colorClass} p-3 rounded-full`}>
       {icon}
     </div>
   </div>
@@ -39,37 +44,37 @@ interface FilterControlsProps {
   onAddNew: () => void;
 }
 const FilterControls: React.FC<FilterControlsProps> = ({ filters, onFilterChange, uniqueGrades, uniqueStatuses, onAddNew }) => (
-  <div className="bg-white p-4 rounded-lg shadow-md mb-6">
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-      <div className="md:col-span-1">
-        <div className="relative">
+  <div className="bg-white p-4 rounded-lg shadow-md mb-6 sticky top-20 z-10 border-t-4 border-indigo-500">
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+      <div className="md:col-span-5 relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
              <svg className="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
           </div>
           <input type="text" value={filters.search} onChange={(e) => onFilterChange('search', e.target.value)} placeholder="Cari merek, produsen..." className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" />
-        </div>
       </div>
-      <div>
+      <div className="md:col-span-2">
         <select value={filters.grade} onChange={(e) => onFilterChange('grade', e.target.value)} className="w-full py-2 px-4 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
           <option value="">Semua Grade</option>
           {uniqueGrades.map(grade => <option key={grade} value={grade}>{grade}</option>)}
         </select>
       </div>
-      <div>
+      <div className="md:col-span-2">
         <select value={filters.status} onChange={(e) => onFilterChange('status', e.target.value)} className="w-full py-2 px-4 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
           <option value="">Semua Status</option>
           {uniqueStatuses.map(status => <option key={status} value={status}>{status}</option>)}
         </select>
       </div>
-      <button onClick={onAddNew} className="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex items-center justify-center">
-        <svg className="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-        Tambah Ubin Baru
-      </button>
+      <div className="md:col-span-3">
+        <button onClick={onAddNew} className="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex items-center justify-center shadow-lg transform active:scale-95 transition-transform">
+          <svg className="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+          Tambah Ubin
+        </button>
+      </div>
     </div>
   </div>
 );
 
-// --- Modal Component for Adding New Tile ---
+// --- Modal Component ---
 interface AddTileModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -102,12 +107,15 @@ const AddTileModal: React.FC<AddTileModalProps> = ({ isOpen, onClose, onSave }) 
     const isFormValid = newTile.brand && newTile.manufacturer && newTile.workingSize && newTile.lokasiSampel;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4 backdrop-blur-sm transition-opacity">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all">
+                <div className="bg-indigo-600 px-6 py-4 flex justify-between items-center">
+                    <h2 className="text-xl font-bold text-white">Tambah Data Ubin Baru</h2>
+                    <button onClick={onClose} className="text-white hover:text-gray-200 text-2xl">&times;</button>
+                </div>
                 <form onSubmit={handleSubmit}>
                     <div className="p-6">
-                        <h2 className="text-xl font-bold text-gray-800 mb-4">Tambah Data Ubin Baru</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <InputField label="Tanggal Masuk" name="entryDate" type="date" value={newTile.entryDate} onChange={handleChange} required />
                             <InputField label="Merek Ubin" name="brand" value={newTile.brand} onChange={handleChange} placeholder="Contoh: Brand A" required />
                             <InputField label="Perusahaan Produsen" name="manufacturer" value={newTile.manufacturer} onChange={handleChange} placeholder="Contoh: PT. Keramik Jaya" required />
@@ -119,11 +127,11 @@ const AddTileModal: React.FC<AddTileModalProps> = ({ isOpen, onClose, onSave }) 
                             <SelectField label="Status" name="status" value={newTile.status} onChange={handleChange} options={['Sampel Aktif', 'Sampel Nonaktif']} />
                         </div>
                     </div>
-                    <div className="bg-gray-100 p-4 flex justify-end space-x-2 rounded-b-lg">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Batal</button>
-                        <button type="submit" disabled={!isFormValid || isSubmitting} className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed flex items-center">
-                            {isSubmitting && <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>}
-                            {isSubmitting ? 'Menyimpan...' : 'Simpan'}
+                    <div className="bg-gray-50 p-4 flex justify-end space-x-3 border-t">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 font-medium shadow-sm">Batal</button>
+                        <button type="submit" disabled={!isFormValid || isSubmitting} className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed flex items-center font-medium shadow-sm">
+                            {isSubmitting && <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>}
+                            {isSubmitting ? 'Menyimpan...' : 'Simpan Data'}
                         </button>
                     </div>
                 </form>
@@ -131,15 +139,14 @@ const AddTileModal: React.FC<AddTileModalProps> = ({ isOpen, onClose, onSave }) 
         </div>
     );
 };
-// Helper for form fields in modal
-const InputField = ({ label, ...props }) => (<div className="flex flex-col"><label className="mb-1 text-sm font-medium text-gray-600">{label}</label><input className="px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" {...props} /></div>);
-const SelectField = ({ label, options, ...props }) => (<div className="flex flex-col"><label className="mb-1 text-sm font-medium text-gray-600">{label}</label><select className="px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" {...props}>{options.map(o => <option key={o} value={o}>{o}</option>)}</select></div>);
+const InputField = ({ label, ...props }) => (<div className="flex flex-col"><label className="mb-1 text-sm font-semibold text-gray-700">{label}</label><input className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow outline-none" {...props} /></div>);
+const SelectField = ({ label, options, ...props }) => (<div className="flex flex-col"><label className="mb-1 text-sm font-semibold text-gray-700">{label}</label><select className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow outline-none bg-white" {...props}>{options.map(o => <option key={o} value={o}>{o}</option>)}</select></div>);
 
 // --- Toast Notification ---
 const Toast: React.FC<{ message: string; type: 'success' | 'error'; onDismiss: () => void }> = ({ message, type, onDismiss }) => (
-    <div className={`fixed bottom-5 right-5 p-4 rounded-lg shadow-lg text-white ${type === 'success' ? 'bg-green-500' : 'bg-red-500'} animate-fade-in-out`}>
-        <span>{message}</span>
-        <button onClick={onDismiss} className="ml-4 font-bold">X</button>
+    <div className={`fixed bottom-5 right-5 p-4 rounded-lg shadow-2xl text-white flex items-center z-50 ${type === 'success' ? 'bg-green-600' : 'bg-red-600'} animate-bounce-in`}>
+        <span className="font-medium">{message}</span>
+        <button onClick={onDismiss} className="ml-4 font-bold opacity-80 hover:opacity-100">&times;</button>
     </div>
 );
 
@@ -151,6 +158,9 @@ function App() {
   const [filters, setFilters] = useState({ search: '', grade: '', status: '' });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  
+  // State untuk Switch Tab View
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
   useEffect(() => {
     const loadData = async () => {
@@ -188,13 +198,31 @@ function App() {
       }
   };
 
+  const handleDeleteTile = async (tile: TileData) => {
+      try {
+          // Update optimistik UI
+          const previousTiles = [...allTiles];
+          setAllTiles(prev => prev.filter(t => t.id !== tile.id));
+
+          await deleteTileData(tile);
+          showToast('Data berhasil dihapus', 'success');
+      } catch (err) {
+          // Rollback jika gagal
+          const message = err instanceof Error ? err.message : 'Gagal menghapus data.';
+          showToast(message, 'error');
+          // Reload data to sync
+          const data = await fetchTileData();
+          setAllTiles(data);
+      }
+  };
+
   const filteredTiles = useMemo(() => {
     return allTiles.filter(tile => {
       const searchLower = filters.search.toLowerCase();
       return (
         (filters.grade === '' || tile.grade === filters.grade) &&
         (filters.status === '' || tile.status === filters.status) &&
-        (tile.brand.toLowerCase().includes(searchLower) || tile.manufacturer.toLowerCase().includes(searchLower))
+        (tile.brand.toLowerCase().includes(searchLower) || tile.manufacturer.toLowerCase().includes(searchLower) || tile.lokasiSampel.toLowerCase().includes(searchLower))
       );
     });
   }, [allTiles, filters]);
@@ -210,23 +238,71 @@ function App() {
     uniqueStatuses: [...new Set(allTiles.map(t => t.status))].sort(),
   }), [allTiles]);
 
-  if (loading) return <div className="flex items-center justify-center h-screen"><div className="text-center"><div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto"></div><p className="mt-2">Memuat data...</p></div></div>;
-  if (error) return <div className="flex items-center justify-center h-screen bg-red-50"><div className="text-center p-8 bg-white shadow-lg rounded-lg"><h2 className="text-2xl font-bold text-red-600">Terjadi Kesalahan</h2><p className="mt-2 text-gray-700">{error}</p><button onClick={() => window.location.reload()} className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Coba Lagi</button></div></div>;
+  if (loading) return <div className="flex items-center justify-center h-screen bg-gray-50"><div className="text-center"><div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div><p className="text-gray-600 font-medium">Sinkronisasi data...</p></div></div>;
+  if (error) return <div className="flex items-center justify-center h-screen bg-red-50"><div className="text-center p-8 bg-white shadow-xl rounded-xl max-w-md"><h2 className="text-2xl font-bold text-red-600 mb-2">Terjadi Kesalahan</h2><p className="text-gray-600 mb-6">{error}</p><button onClick={() => window.location.reload()} className="px-6 py-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors shadow-md">Muat Ulang</button></div></div>;
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 font-sans">
       <Header />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <DashboardCard title="Total Jenis Ubin" value={dashboardMetrics.total} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>} />
-          <DashboardCard title="Merek Unik" value={dashboardMetrics.brands} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0v-4m0 4h5m0 0v-4m0 4h5m0 0v-4m0 4h5" /></svg>} />
-          <DashboardCard title="Sampel Aktif" value={dashboardMetrics.activeSamples} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <DashboardCard title="Total Jenis Ubin" value={dashboardMetrics.total} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>} colorClass="text-blue-600 bg-blue-100" />
+          <DashboardCard title="Merek Unik" value={dashboardMetrics.brands} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0v-4m0 4h5m0 0v-4m0 4h5m0 0v-4m0 4h5" /></svg>} colorClass="text-purple-600 bg-purple-100" />
+          <DashboardCard title="Sampel Aktif" value={dashboardMetrics.activeSamples} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} colorClass="text-green-600 bg-green-100" />
         </div>
         
-        <div className="mb-6"><DashboardCharts data={filteredTiles} /></div>
+        {/* Charts Area */}
+        <div className="mb-8 transform transition hover:scale-[1.01] duration-300"><DashboardCharts data={filteredTiles} /></div>
         
+        {/* Filter & Action Area */}
         <FilterControls filters={filters} onFilterChange={handleFilterChange} uniqueGrades={uniqueFilterOptions.uniqueGrades} uniqueStatuses={uniqueFilterOptions.uniqueStatuses} onAddNew={() => setIsModalOpen(true)} />
-        <TileDataTable data={filteredTiles} />
+        
+        {/* Tabs for View Mode */}
+        <div className="mb-4 border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`
+                whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center
+                ${viewMode === 'list' 
+                  ? 'border-indigo-500 text-indigo-600' 
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
+              `}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+              Tabel Data
+            </button>
+            <button
+              onClick={() => setViewMode('map')}
+              className={`
+                whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center
+                ${viewMode === 'map' 
+                  ? 'border-indigo-500 text-indigo-600' 
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
+              `}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Denah Penyimpanan
+            </button>
+          </nav>
+        </div>
+
+        {/* Data Display Content */}
+        <div className="transition-opacity duration-300 ease-in-out">
+          {viewMode === 'list' ? (
+            <TileDataTable data={filteredTiles} onDelete={handleDeleteTile} />
+          ) : (
+            <StorageMap data={filteredTiles} />
+          )}
+        </div>
+
       </main>
       
       <AddTileModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveTile} />
